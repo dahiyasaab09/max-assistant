@@ -10,7 +10,7 @@ class CommandRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"status": "Max Brain (Powered by Gemini) is active and online"}
+    return {"status": "MAX Brain (Powered by Gemini) is active and online"}
 
 @app.post("/process-command")
 async def process_command(request: CommandRequest):
@@ -22,9 +22,13 @@ async def process_command(request: CommandRequest):
     
     try:
         client = genai.Client(api_key=api_key)
-        prompt = f"You are M.A.X., an advanced artificial intelligence assistant inspired by JARVIS from Iron Man. Be concise, intelligent, efficient, and address the user respectfully as 'Sir'. User command: {user_msg}"
         
-        # Updated to use the active production model
+        # Immediate match for startup or introductory text
+        if "hello" in user_msg.lower() or "who are you" in user_msg.lower() or "start" in user_msg.lower():
+            return {"response": "Hello, I am MAX, a personal assistant of Aadi."}
+
+        prompt = f"You are M.A.X., an advanced artificial intelligence assistant. Be concise, intelligent, efficient, and address the user respectfully as 'Aadi'. User command: {user_msg}"
+        
         response = client.models.generate_content(
             model='gemini-3.6-flash',
             contents=prompt,
@@ -32,7 +36,7 @@ async def process_command(request: CommandRequest):
         return {"response": response.text.strip()}
         
     except Exception as e:
-        return {"response": f"Max AI Error: {str(e)}"}
+        return {"response": f"MAX AI Error: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
