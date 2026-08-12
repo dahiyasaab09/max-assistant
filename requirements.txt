@@ -1,1 +1,6 @@
-gunicorn 
+fastapi
+uvicorn
+pydantic
+openai
+requests
+gunicorn
