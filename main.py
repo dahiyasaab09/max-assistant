@@ -23,12 +23,19 @@ async def process_command(request: CommandRequest):
     try:
         client = genai.Client(api_key=api_key)
         
-        # Immediate match for startup or introductory text
+        # Instant conversational greeting trigger
         if "hello" in user_msg.lower() or "who are you" in user_msg.lower() or "start" in user_msg.lower():
-            return {"response": "Hello, I am MAX, a personal assistant of Aadi."}
+            return {"response": "Hello, I am MAX, your personal assistant, Aadi. All systems are fully optimized."}
 
-        prompt = f"You are M.A.X., an advanced artificial intelligence assistant. Be concise, intelligent, efficient, and address the user respectfully as 'Aadi'. User command: {user_msg}"
+        # Optimized conversational prompt for natural, human-like responses
+        prompt = (
+            f"You are M.A.X., an ultra-intelligent, highly capable artificial intelligence companion "
+            f"inspired by JARVIS. Speak conversationally, naturally, and warmly like a real human assistant—never "
+            f"sound robotic, rigid, or overly formulaic. Keep answers concise, efficient, and address the user as 'Aadi'. "
+            f"User statement: {user_msg}"
+        )
         
+        # Using fast flash model for minimum latency and quicker answers
         response = client.models.generate_content(
             model='gemini-3.6-flash',
             contents=prompt,
@@ -36,7 +43,7 @@ async def process_command(request: CommandRequest):
         return {"response": response.text.strip()}
         
     except Exception as e:
-        return {"response": f"MAX AI Error: {str(e)}"}
+        return {"response": f"MAX Telemetry Error: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
