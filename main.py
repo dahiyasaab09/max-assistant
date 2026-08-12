@@ -14,7 +14,6 @@ async def root():
 @app.post("/process-command")
 async def process_command(request: CommandRequest):
     user_msg = request.message
-    # JARVIS core response logic
     return {"response": f"Hello Sir. Max online. You said: {user_msg}"}
 
 if __name__ == "__main__":
