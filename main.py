@@ -1,38 +1,23 @@
-import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-import openai
+import os
 
-app = FastAPI(title="Max Personal Assistant", version="1.0")
-
-# Setup OpenAI client (or fallback if key isn't provided yet)
-client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "dummy-key"))
+app = FastAPI()
 
 class CommandRequest(BaseModel):
-    device_id: str
-    command: str
+    message: str
+
+@app.get("/")
+async def root():
+    return {"status": "Max Brain is active and online"}
 
 @app.post("/process-command")
-async def process_command(req: CommandRequest):
-    print(f"[{req.device_id}] Received command: {req.command}")
-    
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are Max, an advanced, highly intelligent personal AI assistant inspired by JARVIS. Be concise, efficient, and precise."},
-                {"role": "user", "content": req.command}
-            ]
-        )
-        max_reply = response.choices[0].message.content
-    except Exception as e:
-        max_reply = f"Systems operational. Cloud API key missing or invalid, but Max received your command: '{req.command}'"
-
-    return {
-        "status": "success",
-        "response": max_reply
-    }
+async def process_command(request: CommandRequest):
+    user_msg = request.message
+    # JARVIS core response logic
+    return {"response": f"Hello Sir. Max online. You said: {user_msg}"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
