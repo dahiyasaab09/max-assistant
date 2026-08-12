@@ -5,10 +5,6 @@ from google import genai
 
 app = FastAPI()
 
-# Initialize the Gemini client using the environment variable
-# (Make sure to install 'google-genai' in your requirements.txt)
-client = genai.Client(api_key=os.environ.get("AQ.Ab8RN6Ket9ym_1hgsRVd0wGGRCL8jaiUoEfKsMZWy2DmbLT5ug"))
-
 class CommandRequest(BaseModel):
     message: str
 
@@ -20,11 +16,18 @@ async def root():
 async def process_command(request: CommandRequest):
     user_msg = request.message
     
+    # Retrieve the API key inside the function to catch configuration issues cleanly
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return {"response": "Error: GEMINI_API_KEY environment variable is missing on Render."}
+    
     try:
-        # Prompt instructing Gemini to act as JARVIS
+        # Initialize client with the key
+        client = genai.Client(api_key=api_key)
+        
         prompt = f"You are M.A.X., an advanced artificial intelligence assistant inspired by JARVIS from Iron Man. Be concise, intelligent, efficient, and address the user respectfully as 'Sir'. User command: {user_msg}"
         
-        # Call Gemini model
+        # Call Gemini model using the stable gemini-2.5-flash model
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
@@ -33,7 +36,8 @@ async def process_command(request: CommandRequest):
         return {"response": response.text.strip()}
         
     except Exception as e:
-        return {"response": f"Max online, but error connecting to Gemini brain: {str(e)}"}
+        # Return the error message safely as JSON so Flutter won't throw a FormatException
+        return {"response": f"Max AI Error: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn
