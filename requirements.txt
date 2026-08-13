@@ -4,3 +4,4 @@ requests
 pyttsx3
 groq
 gunicorn
+uvicorn
