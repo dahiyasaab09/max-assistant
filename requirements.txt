@@ -1,9 +1,7 @@
-flask
-flask-cors
-requests
-pyttsx3
-groq
-gunicorn
-uvicorn
 fastapi
+uvicorn
 pydantic
+requests
+groq
+google-genai
+gunicorn
