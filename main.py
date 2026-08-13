@@ -27,9 +27,9 @@ def process_command(req: CommandRequest):
         response_text = "Core cloud systems nominal. Gemini intelligence engine active."
     else:
         try:
-            # Updated to use gemini-3.6-flash for state-of-the-art responses
+            # Using the stable production identifier gemini-1.5-flash
             response = client.models.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-1.5-flash',
                 contents=f"You are MAX 2.0, an advanced Iron Man style AI assistant created for Aadi. Keep responses sharp, futuristic, and helpful. User input: {req.command}"
             )
             response_text = response.text
