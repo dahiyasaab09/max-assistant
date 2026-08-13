@@ -6,7 +6,7 @@ from google import genai
 
 app = FastAPI()
 
-# Automatically pulls your secure GEMINI_API_KEY from Render Environment Variables
+# Automatically initializes using your GEMINI_API_KEY environment variable on Render
 client = genai.Client()
 
 class CommandRequest(BaseModel):
@@ -27,10 +27,10 @@ def process_command(req: CommandRequest):
         response_text = "Core cloud systems nominal. Gemini-3.6 intelligence engine active."
     else:
         try:
-            # Using Gemini 3.6 Flash for advanced agentic performance
+            # Using Gemini 3.6 Flash for cutting-edge reasoning and responses
             response = client.models.generate_content(
                 model='gemini-3.6-flash',
-                contents=f"You are MAX 2.0, an advanced Iron Man style AI assistant created for Aadi. Keep responses sharp, futuristic, and helpful. User input: {req.command}"
+                contents=f"You are MAX 2.0, an advanced Iron Man style AI assistant. Keep responses sharp, futuristic, and helpful. User input: {req.command}"
             )
             response_text = response.text
         except Exception as e:
