@@ -1,55 +1,105 @@
 import os
-from flask import Flask, request, jsonify
-import google.generativeai as genai
+import re
+from typing import List, Optional
 
-app = Flask(__name__)
+from fastapi import FastAPI
+from pydantic import BaseModel
+from google import genai
+from google.genai import types
 
-# Configure your Gemini API Key
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+app = FastAPI(title="Max Personal Assistant", version="1.2")
 
-# Persistent Memory Bank
-conversation_history = [{
-    "role": "model",
-    "parts": ["Hello Aadi, I am MAX. All systems, telemetry, and cross-device execution protocols are active."],
-}]
+# Set GEMINI_API_KEY as an environment variable on Render (Settings -> Environment).
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
-@app.route("/process-command", methods=["POST"])
-def process_command():
-  try:
-    data = request.get_json()
-    user_message = data.get("message", "")
-    
-    if not user_message:
-      return jsonify({"response": "Command stream empty."}), 400
+client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-    # Add user message to memory
-    conversation_history.append({"role": "user", "parts": [user_message]})
-    
-    # Generate AI response
-    chat = model.start_chat(history=conversation_history[:-1])
-    response = chat.send_message(
-        f"You are MAX, a highly advanced Iron Man-style AI assistant built for Aadi. Respond with a concise, tactical, and loyal tone. If the user asks to open Instagram, include [ACTION:INSTAGRAM]. For WhatsApp, include [ACTION:WHATSAPP]. For Notepad, include [ACTION:NOTEPAD]. User command: {user_message}"
-    )
+# Whitelist of device actions the Flutter app knows how to execute.
+# Keep this in sync with _executeDeviceAction() in main.dart.
+VALID_ACTIONS = {
+    "OPEN_NOTEPAD",
+    "OPEN_CALCULATOR",
+    "OPEN_PAINT",
+    "OPEN_INSTAGRAM",
+    "OPEN_WHATSAPP",
+    "OPEN_MAPS",
+    "OPEN_YOUTUBE",
+    "VOLUME_UP",
+    "VOLUME_DOWN",
+    "SCREENSHOT",
+}
 
-    reply_text = response.text
-    conversation_history.append({"role": "model", "parts": [reply_text]})
+ACTION_TAG_RE = re.compile(r"\[ACTION:([A-Z_]+)\]")
 
-    # Action Router
+SYSTEM_PROMPT = (
+    "You are MAX, an advanced, highly intelligent personal AI assistant inspired by JARVIS, "
+    "speaking to your creator Aadi. Be concise, efficient, and precise. "
+    "If — and only if — the user's request clearly means one of the following device actions, "
+    "end your reply with exactly one tag on its own, chosen from: "
+    f"{', '.join(sorted(VALID_ACTIONS))}. "
+    "Format the tag like [ACTION:OPEN_NOTEPAD]. "
+    "If no device action applies, do not include any tag at all."
+)
+
+
+class HistoryTurn(BaseModel):
+    role: str  # "user" or "assistant"
+    text: str
+
+
+class CommandRequest(BaseModel):
+    message: str
+    history: Optional[List[HistoryTurn]] = None
+    device_id: Optional[str] = None  # unused for now, kept for future multi-device support
+
+
+@app.post("/process-command")
+async def process_command(req: CommandRequest):
+    print(f"[{req.device_id or 'unknown-device'}] Received command: {req.message}")
+
     action = "NONE"
-    msg_lower = user_message.lower()
-    if "instagram" in msg_lower or "[ACTION:INSTAGRAM]" in reply_text:
-      action = "OPEN_INSTAGRAM"
-    elif "whatsapp" in msg_lower or "[ACTION:WHATSAPP]" in reply_text:
-      action = "OPEN_WHATSAPP"
-    elif "notepad" in msg_lower or "[ACTION:NOTEPAD]" in reply_text:
-      action = "OPEN_NOTEPAD"
 
-    return jsonify({"response": reply_text, "action": action})
-    
-  except Exception as e:
-    return jsonify({"response": f"System Error: {str(e)}"}), 500
+    if client is None:
+        clean_reply = (
+            f"Systems operational, Aadi. Gemini API key isn't configured on the server yet, "
+            f"but MAX received your command: '{req.message}'"
+        )
+        return {"status": "success", "response": clean_reply, "action": action}
+
+    # Gemini expects roles "user" and "model" (not "assistant").
+    contents: List[types.Content] = []
+    for turn in (req.history or []):
+        role = "model" if turn.role == "assistant" else "user"
+        contents.append(types.Content(role=role, parts=[types.Part(text=turn.text)]))
+    contents.append(types.Content(role="user", parts=[types.Part(text=req.message)]))
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
+        )
+        raw_reply = response.text or "Systems nominal."
+
+        match = ACTION_TAG_RE.search(raw_reply)
+        if match and match.group(1) in VALID_ACTIONS:
+            action = match.group(1)
+
+        clean_reply = ACTION_TAG_RE.sub("", raw_reply).strip()
+    except Exception:
+        clean_reply = (
+            f"Systems operational, Aadi. Gemini API error, "
+            f"but MAX received your command: '{req.message}'"
+        )
+
+    return {
+        "status": "success",
+        "response": clean_reply,
+        "action": action,
+    }
+
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
