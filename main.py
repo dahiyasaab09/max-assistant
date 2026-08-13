@@ -4,19 +4,16 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Configure your Gemini API Key securely via Render environment variables
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Use Gemini model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# In-memory storage for persistent session context (Upgrade 5)
 conversation_history = [
     {
         "role": "model",
         "parts": [
-            "Hello Aadi, I am MAX, your personal AI assistant. All systems, memory cores, and device telemetry links are active."
+            "Hello Aadi, I am MAX, your personal AI assistant. System permissions and telemetry cross-links are standing by."
         ],
     }
 ]
@@ -31,31 +28,25 @@ def process_command():
     if not user_message:
       return jsonify({"response": "Command stream empty."}), 400
 
-    # Append user input to persistent context history
-    conversation_history.append({"role": "user", "parts": [user_message]}
+    conversation_history.append({"role": "user", "parts": [user_message]})
 
-    # Start chat session with historical context
     chat = model.start_chat(history=conversation_history[:-1])
     response = chat.send_message(
-        f"You are MAX, an advanced Iron Man-style AI assistant built for Aadi. Respond with a futuristic, concise, tactical tone. If the user asks to control a device (like opening apps, taking screenshots on PC, or managing mobile tools), acknowledge it with action codes like [PC_ACTION:NOTEPAD], [PC_ACTION:SCREENSHOT], or [PHONE_ACTION:NAVIGATE]. User command: {user_message}"
+        f"You are MAX, an advanced Iron Man-style AI assistant built for Aadi. Respond with a tactical, concise tone. Classify the requested task into one of these actions if applicable: [PC_NOTEPAD], [PHONE_BROWSER], [PHONE_SETTINGS], or [NONE]. User command: {user_message}"
     )
 
     reply_text = response.text
-
-    # Append model reply to history
     conversation_history.append({"role": "model", "parts": [reply_text]})
 
-    # Detect actions for the client apps to execute locally
+    # Detect action codes
     action = "NONE"
-    if "[PC_ACTION:NOTEPAD]" in reply_text or "open notepad" in user_message.lower():
+    msg_lower = user_message.lower()
+    if "notepad" in msg_lower or "[pc_notepad]" in reply_text:
       action = "OPEN_NOTEPAD"
-    elif (
-        "[PC_ACTION:SCREENSHOT]" in reply_text
-        or "screenshot" in user_message.lower()
-    ):
-      action = "TAKE_SCREENSHOT"
-    elif "[PHONE_ACTION" in reply_text or "phone" in user_message.lower():
-      action = "PHONE_TASK"
+    elif "browser" in msg_lower or "google" in msg_lower or "search" in msg_lower or "[phone_browser]" in reply_text:
+      action = "OPEN_BROWSER"
+    elif "settings" in msg_lower or "setting" in msg_lower or "[phone_settings]" in reply_text:
+      action = "OPEN_SETTINGS"
 
     return jsonify({"response": reply_text, "action": action})
 
