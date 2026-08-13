@@ -14,7 +14,7 @@ class CommandRequest(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "MAX 2.0 Gemini-Powered Cloud Brain is online and operational."}
+    return {"status": "MAX 2.0 Gemini-3.6 Cloud Brain is online and operational."}
 
 @app.post("/process")
 def process_command(req: CommandRequest):
@@ -24,12 +24,12 @@ def process_command(req: CommandRequest):
         current_time = datetime.datetime.now().strftime("%I:%M %p")
         response_text = f"The current system time is {current_time}."
     elif 'status' in cmd or 'health' in cmd:
-        response_text = "Core cloud systems nominal. Gemini intelligence engine active."
+        response_text = "Core cloud systems nominal. Gemini-3.6 intelligence engine active."
     else:
         try:
-            # Using the stable production identifier gemini-2.0-flash
+            # Using Gemini 3.6 Flash for advanced agentic performance
             response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-3.6-flash',
                 contents=f"You are MAX 2.0, an advanced Iron Man style AI assistant created for Aadi. Keep responses sharp, futuristic, and helpful. User input: {req.command}"
             )
             response_text = response.text
