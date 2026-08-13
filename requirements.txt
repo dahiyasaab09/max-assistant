@@ -1,7 +1,6 @@
-fastapi
-uvicorn
-pydantic
+flask
+flask-cors
 requests
-google-genai
-gunicorn
+pyttsx3
 groq
+gunicorn
