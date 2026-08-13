@@ -1,6 +1,4 @@
 fastapi
-uvicorn
-pydantic
+uvicorn[standard]
 google-genai
-requests
-gunicorn
+pydantic
