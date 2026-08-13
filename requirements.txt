@@ -5,3 +5,9 @@ pyttsx3
 groq
 gunicorn
 uvicorn
+fastapi
+uvicorn
+pydantic
+requests
+groq
+gunicorn
