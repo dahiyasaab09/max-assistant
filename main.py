@@ -1,105 +1,39 @@
 import os
-import re
-from typing import List, Optional
-
+import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 from google import genai
-from google.genai import types
 
-app = FastAPI(title="Max Personal Assistant", version="1.2")
+app = FastAPI()
 
-# Set GEMINI_API_KEY as an environment variable on Render (Settings -> Environment).
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-
-client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-
-# Whitelist of device actions the Flutter app knows how to execute.
-# Keep this in sync with _executeDeviceAction() in main.dart.
-VALID_ACTIONS = {
-    "OPEN_NOTEPAD",
-    "OPEN_CALCULATOR",
-    "OPEN_PAINT",
-    "OPEN_INSTAGRAM",
-    "OPEN_WHATSAPP",
-    "OPEN_MAPS",
-    "OPEN_YOUTUBE",
-    "VOLUME_UP",
-    "VOLUME_DOWN",
-    "SCREENSHOT",
-}
-
-ACTION_TAG_RE = re.compile(r"\[ACTION:([A-Z_]+)\]")
-
-SYSTEM_PROMPT = (
-    "You are MAX, an advanced, highly intelligent personal AI assistant inspired by JARVIS, "
-    "speaking to your creator Aadi. Be concise, efficient, and precise. "
-    "If — and only if — the user's request clearly means one of the following device actions, "
-    "end your reply with exactly one tag on its own, chosen from: "
-    f"{', '.join(sorted(VALID_ACTIONS))}. "
-    "Format the tag like [ACTION:OPEN_NOTEPAD]. "
-    "If no device action applies, do not include any tag at all."
-)
-
-
-class HistoryTurn(BaseModel):
-    role: str  # "user" or "assistant"
-    text: str
-
+# Initialize Gemini Client (It automatically looks for the GEMINI_API_KEY environment variable)
+client = genai.Client()
 
 class CommandRequest(BaseModel):
-    message: str
-    history: Optional[List[HistoryTurn]] = None
-    device_id: Optional[str] = None  # unused for now, kept for future multi-device support
+    command: str
 
+@app.get("/")
+def home():
+    return {"status": "MAX 2.0 Gemini-Powered Brain is online and operational."}
 
-@app.post("/process-command")
-async def process_command(req: CommandRequest):
-    print(f"[{req.device_id or 'unknown-device'}] Received command: {req.message}")
-
-    action = "NONE"
-
-    if client is None:
-        clean_reply = (
-            f"Systems operational, Aadi. Gemini API key isn't configured on the server yet, "
-            f"but MAX received your command: '{req.message}'"
-        )
-        return {"status": "success", "response": clean_reply, "action": action}
-
-    # Gemini expects roles "user" and "model" (not "assistant").
-    contents: List[types.Content] = []
-    for turn in (req.history or []):
-        role = "model" if turn.role == "assistant" else "user"
-        contents.append(types.Content(role=role, parts=[types.Part(text=turn.text)]))
-    contents.append(types.Content(role="user", parts=[types.Part(text=req.message)]))
-
-    try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config=types.GenerateContentConfig(system_instruction=SYSTEM_PROMPT),
-        )
-        raw_reply = response.text or "Systems nominal."
-
-        match = ACTION_TAG_RE.search(raw_reply)
-        if match and match.group(1) in VALID_ACTIONS:
-            action = match.group(1)
-
-        clean_reply = ACTION_TAG_RE.sub("", raw_reply).strip()
-    except Exception:
-        clean_reply = (
-            f"Systems operational, Aadi. Gemini API error, "
-            f"but MAX received your command: '{req.message}'"
-        )
-
-    return {
-        "status": "success",
-        "response": clean_reply,
-        "action": action,
-    }
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.post("/process")
+def process_command(req: CommandRequest):
+    cmd = req.command.lower()
+    
+    if 'time' in cmd:
+        current_time = datetime.datetime.now().strftime("%I:%M %p")
+        response_text = f"The current system time is {current_time}."
+    elif 'status' in cmd or 'health' in cmd:
+        response_text = "Core cloud systems nominal. Gemini intelligence engine active."
+    else:
+        try:
+            # Send the command/question to Gemini for intelligent generation
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=f"You are MAX 2.0, an advanced Iron Man style AI assistant created for Aadi. Keep responses sharp, concise, futuristic, and helpful. User input: {req.command}"
+            )
+            response_text = response.text
+        except Exception as e:
+            response_text = f"Error processing with Gemini AI engine: {str(e)}"
+            
+    return {"response": response_text}
